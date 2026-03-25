@@ -32,7 +32,6 @@ const residentRoutes  = require('./routes/resident.routes');
 const paymentRoutes   = require('./routes/payment.routes');
 const serviceRoutes   = require('./routes/service.routes');
 const dashboardRoutes = require('./routes/dashboard.routes'); 
-// const dashboardRoutes   = require('./routes/dashboard.routes');
 
 const app = express();
 
