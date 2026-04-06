@@ -7,6 +7,7 @@ const morgan = require('morgan');
 const { getEnv } = require('./config/env');
 const { getHelmetConfig } = require('./config/security');
 const { createV1Router } = require('./routes');
+const { notFound } = require('./middleware/notFound');
 const { errorHandler } = require('./middleware/errorHandler');
 
 function createApp() {
@@ -29,6 +30,7 @@ function createApp() {
 
   app.use('/v1', createV1Router());
 
+  app.use(notFound);
   app.use(errorHandler);
 
   return app;
