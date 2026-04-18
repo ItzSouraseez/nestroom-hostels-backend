@@ -31,7 +31,7 @@ const { addResident, getResidents, getResidentById, updateResident, processKYC }
 const { recordManualPayment, getPaymentHistory, getRevenueDashboard } = require("../controllers/payment.controller");
 const { setAttendanceConfig, requestAttendance, getAttendanceHistory } = require("../controllers/attendance.controller");
 const { getAllLeaves, approveLeave, rejectLeave } = require("../controllers/leave.controller");
-const { sendNotification, getNotificationAnalytics } = require("../controllers/notification.controller");
+const { sendNotification, getNotificationAnalytics, getHostelNotifications } = require("../controllers/notification.controller");
 const { getAllComplaints, updateComplaintStatus, addComplaintMessage } = require("../controllers/complaint.controller");
 const { createFoodSchedule, getCurrentFoodSchedule, getFoodSchedules } = require("../controllers/food.controller");
 
@@ -105,6 +105,8 @@ router.put("/:hostelId/leaves/:leaveId/reject", requireOwnerOrEmployee("canRejec
 // ── Notifications ─────────────────────────────────────────────────────────────
 // POST /v1/hostels/:id/notifications
 router.post("/:hostelId/notifications", requireOwnerOrEmployee("canSendNotifications"), validate(sendNotificationSchema), auditLog("CREATE", "Notification"), sendNotification);
+// GET  /v1/hostels/:id/notifications
+router.get("/:hostelId/notifications", requireOwnerOrEmployee("canViewNotifications"), getHostelNotifications);
 // GET  /v1/hostels/:id/notifications/:notificationId/analytics
 router.get("/:hostelId/notifications/:notificationId/analytics", requireOwnerOrEmployee("canViewNotificationAnalytics"), getNotificationAnalytics);
 

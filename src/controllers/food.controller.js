@@ -39,18 +39,19 @@ const createFoodSchedule = asyncHandler(async (req, res) => {
   }, existing ? 200 : 201);
 });
 
-// ─── 12.2 Get Current Food Schedule ──────────────────────────────────────────
+// ─── 12.2 Get Food Schedule by Date ──────────────────────────────────────────
 const getCurrentFoodSchedule = asyncHandler(async (req, res) => {
   const hostelId = req.params.hostelId || (await resolveHostelId(req));
 
-  const today = new Date();
+  const targetDate = req.query.date ? new Date(req.query.date) : new Date();
+  
   const schedule = await FoodSchedule.findOne({
     hostelId,
-    weekStartDate: { $lte: today },
-    weekEndDate: { $gte: today },
+    weekStartDate: { $lte: targetDate },
+    weekEndDate: { $gte: targetDate },
   }).lean();
 
-  if (!schedule) throw createError("No food schedule found for current week", 404, "NO_SCHEDULE");
+  if (!schedule) throw createError("No food schedule found for this period", 404, "NO_SCHEDULE");
 
   return sendSuccess(res, { schedule });
 });

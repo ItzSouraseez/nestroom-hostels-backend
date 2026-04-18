@@ -63,7 +63,6 @@ const attendanceRecordSchema = new mongoose.Schema(
 );
 
 attendanceRecordSchema.index({ attendanceId: 1 });
-attendanceRecordSchema.index({ residentId: 1 });
 attendanceRecordSchema.index({ hostelId: 1 });
 attendanceRecordSchema.index({ residentId: 1, attendanceDate: -1 });
 attendanceRecordSchema.index({ hostelId: 1, attendanceDate: -1 });

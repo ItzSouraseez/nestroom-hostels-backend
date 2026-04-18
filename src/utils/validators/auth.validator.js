@@ -23,16 +23,14 @@ const ownerSignupSchema = Joi.object({
     .messages({ "any.only": "Passwords do not match" }),
 });
 
-// ── 1.2 Verify Email OTP ──────────────────────────────────────────────────────
-const verifyEmailOTPSchema = Joi.object({
-  email: Joi.string().email().lowercase().trim().required(),
-  otp: Joi.string().length(6).pattern(/^\d+$/).required(),
-});
-
-// ── 1.3 Verify WhatsApp OTP ───────────────────────────────────────────────────
-const verifyWhatsappOTPSchema = Joi.object({
+// ── 1.2 Verify Sign-Up ────────────────────────────────────────────────────────
+const verifyOwnerSignupSchema = Joi.object({
+  hostelName: Joi.string().min(2).max(100).trim().required(),
+  ownerName: Joi.string().min(2).max(100).trim().required(),
   whatsappNumber: phoneSchema.required(),
-  otp: Joi.string().length(6).pattern(/^\d+$/).required(),
+  email: Joi.string().email().lowercase().trim().required(),
+  password: passwordSchema.required(),
+  emailOtp: Joi.string().length(6).pattern(/^\d+$/).required(),
 });
 
 // ── 1.4 Resident Login ────────────────────────────────────────────────────────
@@ -78,8 +76,7 @@ const resetPasswordSchema = Joi.object({
 
 module.exports = {
   ownerSignupSchema,
-  verifyEmailOTPSchema,
-  verifyWhatsappOTPSchema,
+  verifyOwnerSignupSchema,
   residentLoginSchema,
   loginSchema,
   refreshTokenSchema,

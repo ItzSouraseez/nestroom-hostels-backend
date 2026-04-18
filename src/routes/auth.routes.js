@@ -3,8 +3,7 @@ const router = express.Router();
 
 const {
   ownerSignup,
-  verifyEmailOTP,
-  verifyWhatsappOTP,
+  verifyOwnerSignup,
   residentLogin,
   generalLogin,
   logout,
@@ -13,14 +12,15 @@ const {
   verify2FA,
   forgotPassword,
   resetPassword,
+  getMe,
+  updateMe,
 } = require("../controllers/auth.controller");
 
 const authenticate = require("../middlewares/authenticate");
 const validate = require("../middlewares/validate");
 const {
   ownerSignupSchema,
-  verifyEmailOTPSchema,
-  verifyWhatsappOTPSchema,
+  verifyOwnerSignupSchema,
   residentLoginSchema,
   loginSchema,
   refreshTokenSchema,
@@ -33,11 +33,8 @@ const {
 // POST /v1/auth/owner/signup
 router.post("/owner/signup", validate(ownerSignupSchema), ownerSignup);
 
-// POST /v1/auth/owner/verify-email
-router.post("/owner/verify-email", validate(verifyEmailOTPSchema), verifyEmailOTP);
-
-// POST /v1/auth/owner/verify-whatsapp
-router.post("/owner/verify-whatsapp", validate(verifyWhatsappOTPSchema), verifyWhatsappOTP);
+// POST /v1/auth/owner/verify-signup
+router.post("/owner/verify-signup", validate(verifyOwnerSignupSchema), verifyOwnerSignup);
 
 // ── Resident login ────────────────────────────────────────────────────────────
 // POST /v1/auth/resident/login
@@ -67,6 +64,13 @@ router.post("/forgot-password", validate(forgotPasswordSchema), forgotPassword);
 
 // POST /v1/auth/reset-password
 router.post("/reset-password", validate(resetPasswordSchema), resetPassword);
+
+// ── Profile ───────────────────────────────────────────────────────────────────
+// GET /v1/auth/me
+router.get("/me", authenticate, getMe);
+
+// PUT /v1/auth/me
+router.put("/me", authenticate, updateMe);
 
 // ── Health ─── ────────────────────────────────────────────────────────────────
 router.get("/ping", (req, res) => res.json({ success: true, data: { module: "auth" } }));

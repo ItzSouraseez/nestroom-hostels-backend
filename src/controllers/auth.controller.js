@@ -40,9 +40,9 @@ const issueTokenPair = async (user) => {
   return { accessToken, refreshToken };
 };
 
-// ─── 1.1 Owner Sign-Up ────────────────────────────────────────────────────────
+// ─── 1.1 Owner Sign-Up (Initialize) ─────────────────────────────────────────────
 const ownerSignup = asyncHandler(async (req, res) => {
-  const { hostelName, ownerName, numberOfHostels, whatsappNumber, email, password } = req.body;
+  const { email, whatsappNumber, ownerName } = req.body;
 
   // Uniqueness checks
   const existingUser = await User.findOne({ $or: [{ email }, { whatsappNumber }] });
@@ -50,6 +50,51 @@ const ownerSignup = asyncHandler(async (req, res) => {
     if (existingUser.email === email)
       throw createError("Email already registered", 409, "EMAIL_EXISTS");
     throw createError("WhatsApp number already registered", 409, "WHATSAPP_EXISTS");
+  }
+
+  // Generate & send Email OTP
+  const emailOtp = createOTP("email", email);
+  try {
+    await sendOTPEmail(email, emailOtp, ownerName);
+  } catch (e) {
+    console.error("OTP email send failed:", e.message);
+  }
+
+  // Generate & send WhatsApp OTP temporarily disabled
+  // const waOtp = createOTP("whatsapp", whatsappNumber);
+  // try {
+  //   await sendOTPWhatsapp(whatsappNumber, waOtp);
+  // } catch (e) {
+  //   console.error("WhatsApp OTP send failed:", e.message);
+  // }
+
+  return sendSuccess(
+    res,
+    {
+      email,
+      whatsappNumber,
+      message: "Verification OTP sent to your email",
+    },
+    201
+  );
+});
+
+// ─── 1.2 Verify Sign-Up & Create User ─────────────────────────────────────────
+const verifyOwnerSignup = asyncHandler(async (req, res) => {
+  const { hostelName, ownerName, whatsappNumber, email, password, emailOtp, whatsappOtp } = req.body;
+
+  // Verify Email OTP
+  const emailResult = verifyOTP("email", email, emailOtp);
+  if (!emailResult.valid) throw createError(`Email OTP: ${emailResult.reason}`, 400, "INVALID_OTP");
+
+  // Verify WhatsApp OTP temporarily disabled
+  // const waResult = verifyOTP("whatsapp", whatsappNumber, whatsappOtp);
+  // if (!waResult.valid) throw createError(`WhatsApp OTP: ${waResult.reason}`, 400, "INVALID_OTP");
+
+  // Re-check uniqueness just in case
+  const existingUser = await User.findOne({ $or: [{ email }, { whatsappNumber }] });
+  if (existingUser) {
+    throw createError("User already registered during verification process", 409, "USER_EXISTS");
   }
 
   const passwordHash = await bcrypt.hash(password, 12);
@@ -63,6 +108,11 @@ const ownerSignup = asyncHandler(async (req, res) => {
     passwordHash,
     whatsappNumber,
     fullName: ownerName,
+    emailVerified: true,
+    emailVerifiedAt: new Date(),
+    whatsappVerified: true,
+    whatsappVerifiedAt: new Date(),
+    lastLogin: new Date()
   });
 
   // Create first Hostel
@@ -78,67 +128,6 @@ const ownerSignup = asyncHandler(async (req, res) => {
     whatsappNumber,
   });
 
-  // Generate & send Email OTP
-  const otp = createOTP("email", email);
-  try {
-    await sendOTPEmail(email, otp, ownerName);
-  } catch (e) {
-    console.error("OTP email send failed:", e.message);
-  }
-
-  return sendSuccess(
-    res,
-    {
-      userId: user.userId,
-      email: user.email,
-      message: "Verification OTP sent to your email address",
-    },
-    201
-  );
-});
-
-// ─── 1.2 Verify Email OTP ─────────────────────────────────────────────────────
-const verifyEmailOTP = asyncHandler(async (req, res) => {
-  const { email, otp } = req.body;
-
-  const result = verifyOTP("email", email, otp);
-  if (!result.valid) throw createError(result.reason, 400, "INVALID_OTP");
-
-  const user = await User.findOne({ email });
-  if (!user) throw createError("User not found", 404, "USER_NOT_FOUND");
-
-  user.emailVerified = true;
-  user.emailVerifiedAt = new Date();
-  await user.save();
-
-  // Generate & send WhatsApp OTP
-  const waOtp = createOTP("whatsapp", user.whatsappNumber);
-  try {
-    await sendOTPWhatsapp(user.whatsappNumber, waOtp);
-  } catch (e) {
-    console.error("WhatsApp OTP send failed:", e.message);
-  }
-
-  return sendSuccess(res, {
-    message: "Email verified successfully. WhatsApp OTP sent.",
-  });
-});
-
-// ─── 1.3 Verify WhatsApp OTP ──────────────────────────────────────────────────
-const verifyWhatsappOTP = asyncHandler(async (req, res) => {
-  const { whatsappNumber, otp } = req.body;
-
-  const result = verifyOTP("whatsapp", whatsappNumber, otp);
-  if (!result.valid) throw createError(result.reason, 400, "INVALID_OTP");
-
-  const user = await User.findOne({ whatsappNumber });
-  if (!user) throw createError("User not found", 404, "USER_NOT_FOUND");
-
-  user.whatsappVerified = true;
-  user.whatsappVerifiedAt = new Date();
-  user.lastLogin = new Date();
-  await user.save();
-
   const { accessToken, refreshToken } = await issueTokenPair(user);
 
   return sendSuccess(res, {
@@ -149,6 +138,7 @@ const verifyWhatsappOTP = asyncHandler(async (req, res) => {
       email: user.email,
       userType: user.userType,
     },
+    message: "Signup and verification successful",
   });
 });
 
@@ -245,6 +235,58 @@ const generalLogin = asyncHandler(async (req, res) => {
   }
 
   return sendSuccess(res, { accessToken, refreshToken, user: userOut });
+});
+
+// ─── 1.5.1 Get Me (My Profile) ────────────────────────────────────────────────
+const getMe = asyncHandler(async (req, res) => {
+  const user = await User.findById(req.user._id).lean();
+  if (!user) throw createError("User not found", 404, "USER_NOT_FOUND");
+  
+  // Exclude sensitive manually if lean
+  delete user.passwordHash;
+  delete user.twoFactorSecret;
+  delete user.twoFactorSecretPending;
+  delete user.verificationToken;
+  delete user.whatsappOtp;
+  delete user.resetToken;
+  delete user.refreshToken;
+
+  // Include all hostels if owner
+  if (user.userType === "owner") {
+    const hostels = await Hostel.find({ ownerId: user._id }).lean();
+    
+    user.hostels = hostels.map(h => {
+      // Decrypt bank details if present
+      if (h.bankDetails?.accountNumber) {
+        h.bankDetails.accountNumber = decrypt(h.bankDetails.accountNumber);
+      }
+      return h;
+    });
+  }
+
+  return sendSuccess(res, { user });
+});
+
+// ─── 1.5.2 Update Me (My Profile) ─────────────────────────────────────────────
+const updateMe = asyncHandler(async (req, res) => {
+  const { fullName, email, whatsappNumber, profilePhoto, coverPhoto } = req.body;
+  const updatePayload = {};
+  
+  if (fullName !== undefined) updatePayload.fullName = fullName;
+  if (profilePhoto !== undefined) updatePayload.profilePhoto = profilePhoto;
+  if (coverPhoto !== undefined) updatePayload.coverPhoto = coverPhoto;
+  
+  // Note: updating email/whatsapp might require re-verification conceptually, but we allow simple update here
+  if (email !== undefined) updatePayload.email = email;
+  if (whatsappNumber !== undefined) updatePayload.whatsappNumber = whatsappNumber;
+
+  const user = await User.findByIdAndUpdate(req.user._id, { $set: updatePayload }, { new: true }).lean();
+  
+  delete user.passwordHash;
+  delete user.twoFactorSecret;
+  delete user.twoFactorSecretPending;
+  
+  return sendSuccess(res, { message: "Profile updated successfully", user });
 });
 
 // ─── 1.6 Logout ───────────────────────────────────────────────────────────────
@@ -356,8 +398,7 @@ const resetPassword = asyncHandler(async (req, res) => {
 
 module.exports = {
   ownerSignup,
-  verifyEmailOTP,
-  verifyWhatsappOTP,
+  verifyOwnerSignup,
   residentLogin,
   generalLogin,
   logout,
@@ -366,4 +407,6 @@ module.exports = {
   verify2FA,
   forgotPassword,
   resetPassword,
+  getMe,
+  updateMe,
 };

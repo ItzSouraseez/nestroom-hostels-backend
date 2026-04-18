@@ -210,8 +210,18 @@ const getRevenueDashboard = asyncHandler(async (req, res) => {
   const now = new Date();
   const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
   const startOfYear = new Date(now.getFullYear(), 0, 1);
+  const sevenDaysFromNow = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
 
-  const [monthly, yearly, totalPending, outstanding, hostel] = await Promise.all([
+  const [
+    monthly, 
+    yearly, 
+    totalPending, 
+    outstanding, 
+    hostel,
+    rooms,
+    residentsCount,
+    upcomingRenewalsCount
+  ] = await Promise.all([
     Payment.aggregate([
       { $match: { hostelId: new mongoose.Types.ObjectId(hostelId), paymentStatus: "Success", paidDate: { $gte: startOfMonth } } },
       { $group: { _id: null, total: { $sum: "$amount" }, count: { $sum: 1 } } },
@@ -226,6 +236,46 @@ const getRevenueDashboard = asyncHandler(async (req, res) => {
       { $group: { _id: null, total: { $sum: "$amount" } } },
     ]),
     Hostel.findById(hostelId).select("totalRevenue").lean(),
+    mongoose.model("Room").find({ hostelId, isActive: true }).select("bedCount pricing").lean(),
+    Resident.countDocuments({ hostelId, residentStatus: "Active" }),
+    Resident.countDocuments({ 
+      hostelId, 
+      residentStatus: "Active", 
+      nextDueDate: { $gte: now, $lte: sevenDaysFromNow } 
+    }),
+  ]);
+
+  // Potential Income calculation
+  let potentialMonthlyIncome = 0;
+  rooms.forEach(room => {
+    potentialMonthlyIncome += (room.bedCount * (room.pricing?.monthly?.amount || 0));
+  });
+
+  // Submission Statistics
+  const submittedCount = await Resident.countDocuments({ 
+    hostelId, 
+    residentStatus: "Active", 
+    nextDueDate: { $gt: new Date(now.getFullYear(), now.getMonth() + 1, 1) } 
+  });
+
+  const nonSubmittedCount = residentsCount - submittedCount;
+
+  // Monthly trends
+  const trendsResponse = await Payment.aggregate([
+    { 
+      $match: { 
+        hostelId: new mongoose.Types.ObjectId(hostelId), 
+        paymentStatus: "Success", 
+        paidDate: { $gte: new Date(now.getFullYear(), now.getMonth() - 5, 1) } 
+      } 
+    },
+    {
+      $group: {
+        _id: { month: { $month: "$paidDate" }, year: { $year: "$paidDate" } },
+        earnings: { $sum: "$amount" }
+      }
+    },
+    { $sort: { "_id.year": 1, "_id.month": 1 } }
   ]);
 
   return sendSuccess(res, {
@@ -235,6 +285,17 @@ const getRevenueDashboard = asyncHandler(async (req, res) => {
     yearlyRevenue: yearly[0]?.total || 0,
     pendingPayments: totalPending,
     outstandingAmount: outstanding[0]?.total || 0,
+    potentialMonthlyIncome,
+    stats: {
+      submitted: submittedCount,
+      nonSubmitted: nonSubmittedCount,
+      totalResidents: residentsCount,
+      upcomingRenewals: upcomingRenewalsCount
+    },
+    trends: trendsResponse.map(t => ({
+      month: new Date(t._id.year, t._id.month - 1).toLocaleString('default', { month: 'short' }),
+      earnings: t.earnings
+    }))
   });
 });
 

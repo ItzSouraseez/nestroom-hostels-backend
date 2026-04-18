@@ -58,7 +58,6 @@ const auditLogSchema = new mongoose.Schema(
   }
 );
 
-auditLogSchema.index({ logId: 1 });
 auditLogSchema.index({ userId: 1 });
 auditLogSchema.index({ hostelId: 1 });
 auditLogSchema.index({ action: 1 });

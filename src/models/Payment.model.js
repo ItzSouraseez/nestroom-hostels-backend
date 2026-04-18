@@ -95,8 +95,6 @@ const paymentSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-paymentSchema.index({ paymentId: 1 });
-paymentSchema.index({ residentId: 1 });
 paymentSchema.index({ hostelId: 1 });
 paymentSchema.index({ paymentStatus: 1 });
 paymentSchema.index({ residentId: 1, paidDate: -1 });

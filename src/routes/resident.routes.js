@@ -19,7 +19,7 @@ const {
 
 const { addResident, getResidents, getResidentById, updateResident, getMyProfile, uploadKYC, processKYC } = require("../controllers/resident.controller");
 const { initializePayment, verifyPayment, getPaymentHistory, getUpcomingPayment } = require("../controllers/payment.controller");
-const { submitAttendance, getMyAttendance } = require("../controllers/attendance.controller");
+const { submitAttendance, getMyAttendance, getActiveAttendanceRequest } = require("../controllers/attendance.controller");
 const { applyLeave, getMyLeaves } = require("../controllers/leave.controller");
 const { getMyNotifications, markAsRead, submitPollResponse } = require("../controllers/notification.controller");
 const { raiseComplaint, getMyComplaints, addComplaintMessage } = require("../controllers/complaint.controller");
@@ -49,6 +49,9 @@ router.get("/payments/history", requireResident, getPaymentHistory);
 router.get("/payments/upcoming", requireResident, getUpcomingPayment);
 
 // ── Attendance ────────────────────────────────────────────────────────────────
+// GET  /v1/residents/attendance/active
+router.get("/attendance/active", requireResident, getActiveAttendanceRequest);
+
 // POST /v1/residents/attendance/submit
 router.post("/attendance/submit", requireResident, validate(submitAttendanceSchema), auditLog("CREATE", "AttendanceRecord"), submitAttendance);
 

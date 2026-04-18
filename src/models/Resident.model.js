@@ -94,7 +94,6 @@ const residentSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-residentSchema.index({ residentId: 1 });
 residentSchema.index({ userId: 1 });
 residentSchema.index({ hostelId: 1 });
 residentSchema.index({ roomId: 1 });

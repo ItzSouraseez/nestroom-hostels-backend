@@ -262,13 +262,33 @@ const createBuilding = asyncHandler(async (req, res) => {
 // ─── 3.3 Get Rooms (grid layout) ──────────────────────────────────────────────
 const getRooms = asyncHandler(async (req, res) => {
   const { buildingId, floorNumber, status } = req.query;
+  const hostelId = new mongoose.Types.ObjectId(req.params.hostelId);
 
-  const filter = { hostelId: req.params.hostelId, isActive: true };
-  if (buildingId) filter.buildingId = buildingId;
-  if (floorNumber !== undefined) filter.floorNumber = parseInt(floorNumber);
-  if (status) filter.roomStatus = status;
+  // Use Aggregation for reliable joining of Beds
+  const rooms = await Room.aggregate([
+    { 
+      $match: { 
+        hostelId, 
+        isActive: true,
+        ...(buildingId ? { buildingId: new mongoose.Types.ObjectId(buildingId) } : {}),
+        ...(floorNumber !== undefined ? { floorNumber: parseInt(floorNumber) } : {}),
+        ...(status ? { roomStatus: status } : {})
+      } 
+    },
+    {
+      $lookup: {
+        from: "beds",
+        localField: "_id",
+        foreignField: "roomId",
+        as: "beds"
+      }
+    }
+  ]);
 
-  const rooms = await Room.find(filter).lean();
+  const buildings = await Building.find({
+    hostelId: req.params.hostelId,
+    ...(buildingId ? { _id: buildingId } : {}),
+  }).lean();
 
   // Group by building → floor
   const byBuilding = {};
@@ -280,17 +300,13 @@ const getRooms = asyncHandler(async (req, res) => {
     byBuilding[bKey][fKey].push(room);
   }
 
-  const buildings = await Building.find({
-    hostelId: req.params.hostelId,
-    ...(buildingId ? { _id: buildingId } : {}),
-  }).lean();
-
   const result = buildings.map((b) => ({
-    buildingId: b.buildingId,
+    buildingId: b.buildingId, // Code
     buildingName: b.buildingName,
-    floors: Object.entries(byBuilding[String(b._id)] || {}).map(([floor, rooms]) => ({
+    _id: b._id, // Mongo ID
+    floors: Object.entries(byBuilding[String(b._id)] || {}).map(([floor, floorRooms]) => ({
       floorNumber: parseInt(floor),
-      rooms,
+      rooms: floorRooms,
     })).sort((a, b) => a.floorNumber - b.floorNumber),
   }));
 

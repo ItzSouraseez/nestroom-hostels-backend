@@ -101,7 +101,6 @@ const notificationSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-notificationSchema.index({ notificationId: 1 });
 notificationSchema.index({ hostelId: 1 });
 notificationSchema.index({ senderId: 1 });
 notificationSchema.index({ hostelId: 1, sentAt: -1 });

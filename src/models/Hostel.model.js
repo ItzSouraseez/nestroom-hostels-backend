@@ -82,6 +82,15 @@ const hostelSchema = new mongoose.Schema(
     totalResidents: { type: Number, default: 0 },
     averageOccupancy: { type: Number, default: 0 },
 
+    // ── Attendance Config ─────────────────────────────────────────────────────
+    attendanceConfig: {
+      enabled: { type: Boolean, default: false },
+      startTime: { type: String, default: "21:00" }, // 9:00 PM
+      windowMinutes: { type: Number, default: 120 }, // 2 hours
+      daysOfWeek: [{ type: String, enum: ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"], default: ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"] }],
+      timezone: { type: String, default: "Asia/Kolkata" },
+    },
+
     // ── Status ────────────────────────────────────────────────────────────────
     isActive: { type: Boolean, default: true },
   },
