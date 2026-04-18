@@ -83,8 +83,6 @@ const complaintSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-complaintSchema.index({ complaintId: 1 });
-complaintSchema.index({ residentId: 1 });
 complaintSchema.index({ hostelId: 1 });
 complaintSchema.index({ status: 1 });
 complaintSchema.index({ hostelId: 1, status: 1 });

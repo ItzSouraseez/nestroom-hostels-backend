@@ -115,4 +115,40 @@ cron.schedule("0 1 * * *", async () => {
   }
 });
 
+// ─── Job 5: Recurring Attendance Trigger ─────────────────────────────────────
+// Runs every 5 minutes.
+// Checks hostels with enabled attendance and triggers if startTime matches.
+cron.schedule("*/5 * * * *", async () => {
+  try {
+    const { triggerAttendanceForHostel } = require("../services/attendanceTrigger");
+    const Hostel = require("../models/Hostel.model");
+    
+    // Get current time in HH:MM format (Asia/Kolkata)
+    const now = new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Kolkata" }));
+    const hh = String(now.getHours()).padStart(2, "0");
+    const mm = String(now.getMinutes()).padStart(2, "0");
+    const currentTime = `${hh}:${mm}`;
+    const currentDay = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"][now.getDay()];
+
+    // Find hostels where attendance is enabled and startTime is due
+    // Since we run every 5 mins, we check if startTime is within the last 5 mins
+    const hostels = await Hostel.find({
+      "attendanceConfig.enabled": true,
+      "attendanceConfig.daysOfWeek": currentDay,
+      "attendanceConfig.startTime": { $lte: currentTime },
+    });
+
+    for (const hostel of hostels) {
+      // Check if it's strictly within the last 5 minutes to avoid double triggers in subsequent runs
+      // Or just let triggerAttendanceForHostel handle the "already requested" check
+      const result = await triggerAttendanceForHostel(hostel._id);
+      if (result.success) {
+        console.log(`⏰ [CRON] Triggered scheduled attendance for hostel: ${hostel.hostelName}`);
+      }
+    }
+  } catch (err) {
+    console.error("❌ [CRON] dailyAttendanceTrigger failed:", err.message);
+  }
+});
+
 module.exports = {};

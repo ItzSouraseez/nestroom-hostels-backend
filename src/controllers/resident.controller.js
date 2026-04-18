@@ -138,7 +138,7 @@ const getResidents = asyncHandler(async (req, res) => {
   if (roomId) filter.roomId = roomId;
   if (search) filter.fullName = { $regex: search, $options: "i" };
 
-  const [residents, total] = await Promise.all([
+  const [residents, total, newJoinees, noticePeriod, activeResidents] = await Promise.all([
     Resident.find(filter)
       .populate("roomId", "roomNumber floorNumber")
       .populate("bedId", "bedNumber")
@@ -147,11 +147,28 @@ const getResidents = asyncHandler(async (req, res) => {
       .limit(parseInt(limit))
       .lean(),
     Resident.countDocuments(filter),
+    Resident.countDocuments({
+      hostelId: req.params.hostelId,
+      checkInDate: { $gte: new Date(new Date().getFullYear(), new Date().getMonth(), 1) }
+    }),
+    Resident.countDocuments({
+      hostelId: req.params.hostelId,
+      residentStatus: "TerminatedWithNotice"
+    }),
+    Resident.countDocuments({
+      hostelId: req.params.hostelId,
+      residentStatus: "Active"
+    })
   ]);
 
   return sendSuccess(res, {
     residents,
     pagination: { page: parseInt(page), limit: parseInt(limit), total, pages: Math.ceil(total / parseInt(limit)) },
+    stats: {
+      newJoinees,
+      noticePeriod,
+      activeResidents
+    }
   });
 });
 

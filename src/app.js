@@ -15,7 +15,16 @@ app.use(helmet());
 // ─── CORS ─────────────────────────────────────────────────────────────────────
 app.use(
   cors({
-    origin: process.env.FRONTEND_URL || "*",
+    origin: function (origin, callback) {
+      // Allow requests with no origin (like mobile apps, curl)
+      // Allow any localhost port for local development
+      // Allow explicitly configured FRONTEND_URL for production
+      if (!origin || origin.startsWith("http://localhost") || origin === process.env.FRONTEND_URL) {
+        callback(null, true);
+      } else {
+        callback(new Error("Not allowed by CORS"));
+      }
+    },
     credentials: true,
     methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     allowedHeaders: ["Content-Type", "Authorization"],
@@ -27,7 +36,14 @@ app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true, limit: "10mb" }));
 
 // ─── NoSQL Injection Prevention ───────────────────────────────────────────────
-app.use(mongoSanitize());
+app.use((req, res, next) => {
+  ['body', 'params', 'headers', 'query'].forEach((key) => {
+    if (req[key]) {
+      mongoSanitize.sanitize(req[key]);
+    }
+  });
+  next();
+});
 
 // ─── HTTP Logging ─────────────────────────────────────────────────────────────
 if (process.env.NODE_ENV !== "test") {

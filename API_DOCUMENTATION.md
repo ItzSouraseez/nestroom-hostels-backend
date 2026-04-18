@@ -1,9 +1,9 @@
 # 📘 nestRoom Hostels — API Documentation
 
-> **Base URL (local):** `http://localhost:5000`  
+> **Base URL (local):** `http://localhost:5001`  
 > **Base URL (production):** `https://nestroom-hostels-backend.vercel.app`  
 > **API Version Prefix:** `/v1`  
-> **Full base for all API calls:** `http://localhost:5000/v1`
+> **Full base for all API calls:** `http://localhost:5001/v1`
 
 ---
 
@@ -36,12 +36,12 @@
 2. Click **"+"** to create a new environment → name it `nestRoom Local`
 3. Add these variables:
 
-| Variable | Initial Value | Description |
-|----------|--------------|-------------|
-| `BASE_URL` | `http://localhost:5000/v1` | API base URL |
-| `ACCESS_TOKEN` | *(leave blank)* | Filled automatically after login |
-| `REFRESH_TOKEN` | *(leave blank)* | Filled automatically after login |
-| `HOSTEL_ID` | *(leave blank)* | Filled after creating a hostel |
+| Variable        | Initial Value              | Description                      |
+| --------------- | -------------------------- | -------------------------------- |
+| `BASE_URL`      | `http://localhost:5001/v1` | API base URL                     |
+| `ACCESS_TOKEN`  | _(leave blank)_            | Filled automatically after login |
+| `REFRESH_TOKEN` | _(leave blank)_            | Filled automatically after login |
+| `HOSTEL_ID`     | _(leave blank)_            | Filled after creating a hostel   |
 
 4. Click **"Save"**
 5. Select `nestRoom Local` in the top-right environment dropdown
@@ -82,23 +82,23 @@ All requests inside the collection will now automatically send the Bearer token 
 
 In the collection **Edit** → **Pre-request Script** tab, or set on each request:
 
-| Key | Value |
-|-----|-------|
-| `Content-Type` | `application/json` |
-| `Authorization` | `Bearer {{ACCESS_TOKEN}}` *(auto from collection)* |
+| Key             | Value                                              |
+| --------------- | -------------------------------------------------- |
+| `Content-Type`  | `application/json`                                 |
+| `Authorization` | `Bearer {{ACCESS_TOKEN}}` _(auto from collection)_ |
 
 ---
 
 ## 2. General Rules
 
-| Rule | Detail |
-|------|--------|
-| **Auth header** | `Authorization: Bearer <accessToken>` |
-| **Content type** | `Content-Type: application/json` for all JSON bodies |
-| **File uploads** | Use `multipart/form-data` (KYC upload, complaint attachments) |
-| **Phone numbers** | Must be E.164 format: `+919876543210` |
-| **Dates** | ISO 8601: `2024-06-15` or `2024-06-15T10:00:00Z` |
-| **IDs** | MongoDB ObjectIds — 24-char hex strings |
+| Rule               | Detail                                                             |
+| ------------------ | ------------------------------------------------------------------ |
+| **Auth header**    | `Authorization: Bearer <accessToken>`                              |
+| **Content type**   | `Content-Type: application/json` for all JSON bodies               |
+| **File uploads**   | Use `multipart/form-data` (KYC upload, complaint attachments)      |
+| **Phone numbers**  | Must be E.164 format: `+919876543210`                              |
+| **Dates**          | ISO 8601: `2024-06-15` or `2024-06-15T10:00:00Z`                   |
+| **IDs**            | MongoDB ObjectIds — 24-char hex strings                            |
 | **Password rules** | Min 8 chars, must have: uppercase, lowercase, number, special char |
 
 ---
@@ -106,6 +106,7 @@ In the collection **Edit** → **Pre-request Script** tab, or set on each reques
 ## 3. Response Format
 
 ### Success Response
+
 ```json
 {
   "success": true,
@@ -115,15 +116,14 @@ In the collection **Edit** → **Pre-request Script** tab, or set on each reques
 ```
 
 ### Error Response
+
 ```json
 {
   "success": false,
   "error": {
     "code": "VALIDATION_ERROR",
     "message": "Validation failed",
-    "details": [
-      { "field": "email", "message": "email must be a valid email" }
-    ]
+    "details": [{ "field": "email", "message": "email must be a valid email" }]
   }
 }
 ```
@@ -133,12 +133,15 @@ In the collection **Edit** → **Pre-request Script** tab, or set on each reques
 ## 4. System / Health
 
 ### `GET /` — Service Info
+
 ```
 GET http://localhost:5000/
 ```
+
 No auth required. Returns service name, version, and status.
 
 **Sample Response:**
+
 ```json
 {
   "success": true,
@@ -154,24 +157,29 @@ No auth required. Returns service name, version, and status.
 ---
 
 ### `GET /health` — Health Check
+
 ```
 GET http://localhost:5000/health
 ```
+
 Use this to check if the server is up.
 
 ---
 
 ### `GET /v1/auth/ping` — Auth Module Ping
+
 ```
 GET {{BASE_URL}}/auth/ping
 ```
 
 ### `GET /v1/hostels/ping` — Hostels Module Ping
+
 ```
 GET {{BASE_URL}}/hostels/ping
 ```
 
 ### `GET /v1/residents/ping` — Residents Module Ping
+
 ```
 GET {{BASE_URL}}/residents/ping
 ```
@@ -191,6 +199,7 @@ POST {{BASE_URL}}/auth/owner/signup
 ```
 
 **Body (JSON):**
+
 ```json
 {
   "hostelName": "Sunrise PG",
@@ -203,15 +212,15 @@ POST {{BASE_URL}}/auth/owner/signup
 }
 ```
 
-| Field | Type | Required | Rules |
-|-------|------|----------|-------|
-| `hostelName` | string | ✅ | 2–100 chars |
-| `ownerName` | string | ✅ | 2–100 chars |
-| `numberOfHostels` | integer | ❌ | Default: 1, max: 100 |
-| `whatsappNumber` | string | ✅ | E.164 format |
-| `email` | string | ✅ | Valid email |
-| `password` | string | ✅ | 8+ chars, uppercase+lowercase+number+special |
-| `confirmPassword` | string | ✅ | Must match `password` |
+| Field             | Type    | Required | Rules                                        |
+| ----------------- | ------- | -------- | -------------------------------------------- |
+| `hostelName`      | string  | ✅       | 2–100 chars                                  |
+| `ownerName`       | string  | ✅       | 2–100 chars                                  |
+| `numberOfHostels` | integer | ❌       | Default: 1, max: 100                         |
+| `whatsappNumber`  | string  | ✅       | E.164 format                                 |
+| `email`           | string  | ✅       | Valid email                                  |
+| `password`        | string  | ✅       | 8+ chars, uppercase+lowercase+number+special |
+| `confirmPassword` | string  | ✅       | Must match `password`                        |
 
 **What happens:** OTP sent to the provided email.
 
@@ -224,6 +233,7 @@ POST {{BASE_URL}}/auth/owner/verify-email
 ```
 
 **Body (JSON):**
+
 ```json
 {
   "email": "raj@example.com",
@@ -231,10 +241,10 @@ POST {{BASE_URL}}/auth/owner/verify-email
 }
 ```
 
-| Field | Type | Required | Rules |
-|-------|------|----------|-------|
-| `email` | string | ✅ | Same email used in signup |
-| `otp` | string | ✅ | Exactly 6 numeric digits |
+| Field   | Type   | Required | Rules                     |
+| ------- | ------ | -------- | ------------------------- |
+| `email` | string | ✅       | Same email used in signup |
+| `otp`   | string | ✅       | Exactly 6 numeric digits  |
 
 **What happens:** Email verified → OTP sent to WhatsApp.
 
@@ -247,6 +257,7 @@ POST {{BASE_URL}}/auth/owner/verify-whatsapp
 ```
 
 **Body (JSON):**
+
 ```json
 {
   "whatsappNumber": "+919876543210",
@@ -254,12 +265,13 @@ POST {{BASE_URL}}/auth/owner/verify-whatsapp
 }
 ```
 
-| Field | Type | Required | Rules |
-|-------|------|----------|-------|
-| `whatsappNumber` | string | ✅ | Same number used in signup |
-| `otp` | string | ✅ | Exactly 6 numeric digits |
+| Field            | Type   | Required | Rules                      |
+| ---------------- | ------ | -------- | -------------------------- |
+| `whatsappNumber` | string | ✅       | Same number used in signup |
+| `otp`            | string | ✅       | Exactly 6 numeric digits   |
 
 **Sample Response:**
+
 ```json
 {
   "success": true,
@@ -271,6 +283,7 @@ POST {{BASE_URL}}/auth/owner/verify-whatsapp
 ```
 
 **Postman Tests tab** — paste to auto-save tokens:
+
 ```javascript
 const res = pm.response.json();
 if (res.success) {
@@ -288,6 +301,7 @@ POST {{BASE_URL}}/auth/login
 ```
 
 **Body (JSON) — Standard:**
+
 ```json
 {
   "email": "raj@example.com",
@@ -296,6 +310,7 @@ POST {{BASE_URL}}/auth/login
 ```
 
 **Body (JSON) — With 2FA:**
+
 ```json
 {
   "email": "raj@example.com",
@@ -304,13 +319,14 @@ POST {{BASE_URL}}/auth/login
 }
 ```
 
-| Field | Type | Required | Rules |
-|-------|------|----------|-------|
-| `email` | string | ✅ | |
-| `password` | string | ✅ | |
-| `totpToken` | string | ❌ | 6-digit TOTP (only if 2FA is enabled) |
+| Field       | Type   | Required | Rules                                 |
+| ----------- | ------ | -------- | ------------------------------------- |
+| `email`     | string | ✅       |                                       |
+| `password`  | string | ✅       |                                       |
+| `totpToken` | string | ❌       | 6-digit TOTP (only if 2FA is enabled) |
 
 **If 2FA is enabled but no TOTP provided:**
+
 ```json
 {
   "success": true,
@@ -332,6 +348,7 @@ POST {{BASE_URL}}/auth/resident/login
 ```
 
 **Body (JSON):**
+
 ```json
 {
   "hostelCode": "SUNRISE_001",
@@ -340,11 +357,11 @@ POST {{BASE_URL}}/auth/resident/login
 }
 ```
 
-| Field | Type | Required | Rules |
-|-------|------|----------|-------|
-| `hostelCode` | string | ✅ | Given by hostel owner |
-| `email` | string | ✅ | |
-| `password` | string | ✅ | |
+| Field        | Type   | Required | Rules                 |
+| ------------ | ------ | -------- | --------------------- |
+| `hostelCode` | string | ✅       | Given by hostel owner |
+| `email`      | string | ✅       |                       |
+| `password`   | string | ✅       |                       |
 
 ---
 
@@ -367,6 +384,7 @@ POST {{BASE_URL}}/auth/refresh-token
 ```
 
 **Body (JSON):**
+
 ```json
 {
   "refreshToken": "{{REFRESH_TOKEN}}"
@@ -376,6 +394,7 @@ POST {{BASE_URL}}/auth/refresh-token
 Returns a new `accessToken` and `refreshToken` pair.
 
 **Postman Tests tab:**
+
 ```javascript
 const res = pm.response.json();
 if (res.success) {
@@ -397,6 +416,7 @@ POST {{BASE_URL}}/auth/setup-2fa
 No body. Returns a `qrCodeUrl` and `secret`. Scan the QR in Google Authenticator.
 
 **Sample Response:**
+
 ```json
 {
   "success": true,
@@ -418,6 +438,7 @@ POST {{BASE_URL}}/auth/verify-2fa
 🔐 **Requires Auth**
 
 **Body (JSON):**
+
 ```json
 {
   "token": "123456",
@@ -425,10 +446,10 @@ POST {{BASE_URL}}/auth/verify-2fa
 }
 ```
 
-| Field | Type | Required | Rules |
-|-------|------|----------|-------|
-| `token` | string | ✅ | 6-digit TOTP from authenticator app |
-| `secret` | string | ✅ | Secret returned from `setup-2fa` |
+| Field    | Type   | Required | Rules                               |
+| -------- | ------ | -------- | ----------------------------------- |
+| `token`  | string | ✅       | 6-digit TOTP from authenticator app |
+| `secret` | string | ✅       | Secret returned from `setup-2fa`    |
 
 ---
 
@@ -439,6 +460,7 @@ POST {{BASE_URL}}/auth/forgot-password
 ```
 
 **Body (JSON):**
+
 ```json
 {
   "email": "raj@example.com"
@@ -456,6 +478,7 @@ POST {{BASE_URL}}/auth/reset-password
 ```
 
 **Body (JSON):**
+
 ```json
 {
   "email": "raj@example.com",
@@ -465,12 +488,12 @@ POST {{BASE_URL}}/auth/reset-password
 }
 ```
 
-| Field | Type | Required |
-|-------|------|----------|
-| `email` | string | ✅ |
-| `otp` | string | ✅ |
-| `newPassword` | string | ✅ |
-| `confirmPassword` | string | ✅ |
+| Field             | Type   | Required |
+| ----------------- | ------ | -------- |
+| `email`           | string | ✅       |
+| `otp`             | string | ✅       |
+| `newPassword`     | string | ✅       |
+| `confirmPassword` | string | ✅       |
 
 ---
 
@@ -507,6 +530,7 @@ PUT {{BASE_URL}}/hostels/{{HOSTEL_ID}}
 ```
 
 **Body (JSON) — all fields optional:**
+
 ```json
 {
   "hostelName": "Sunrise Premium PG",
@@ -540,6 +564,7 @@ PUT {{BASE_URL}}/hostels/{{HOSTEL_ID}}/bank-details
 ```
 
 **Body (JSON):**
+
 ```json
 {
   "accountHolderName": "Raj Kumar",
@@ -572,6 +597,7 @@ POST {{BASE_URL}}/hostels/{{HOSTEL_ID}}/employees
 ```
 
 **Body (JSON):**
+
 ```json
 {
   "fullName": "Priya Singh",
@@ -603,36 +629,36 @@ POST {{BASE_URL}}/hostels/{{HOSTEL_ID}}/employees
 
 **All available permissions (all default `false`):**
 
-| Permission | Description |
-|-----------|-------------|
-| `canAddResidents` | Add new residents |
-| `canEditResidents` | Edit resident profiles |
-| `canDeleteResidents` | Remove residents |
-| `canViewResidentKYC` | View KYC documents |
-| `canApproveKYC` | Approve/reject KYC |
-| `canManageRooms` | Create/edit rooms |
-| `canEditRoomStatus` | Change room status |
-| `canAllocateRooms` | Assign beds |
-| `canViewPayments` | See payment records |
-| `canInitiatePayments` | Initiate payments |
-| `canMarkPaymentManual` | Record cash payments |
-| `canViewRevenue` | Revenue dashboard |
-| `canExportPaymentReport` | Export reports |
-| `canViewAttendance` | View attendance |
-| `canInitiateAttendance` | Trigger daily attendance |
-| `canOverrideAttendance` | Override status |
-| `canApproveLeaves` | Approve leave requests |
-| `canRejectLeaves` | Reject leave requests |
-| `canViewLeaveAnalytics` | Leave statistics |
-| `canViewComplaints` | See all complaints |
-| `canAssignComplaints` | Assign to staff |
-| `canUpdateComplaintStatus` | Resolve/close |
-| `canDeleteComplaints` | Delete complaints |
-| `canSendNotifications` | Send announcements |
-| `canViewNotificationAnalytics` | View read/poll stats |
-| `canViewPollResults` | See poll results |
-| `canManageFoodSchedule` | Create meal plans |
-| `canViewFoodFeedback` | See meal ratings |
+| Permission                     | Description              |
+| ------------------------------ | ------------------------ |
+| `canAddResidents`              | Add new residents        |
+| `canEditResidents`             | Edit resident profiles   |
+| `canDeleteResidents`           | Remove residents         |
+| `canViewResidentKYC`           | View KYC documents       |
+| `canApproveKYC`                | Approve/reject KYC       |
+| `canManageRooms`               | Create/edit rooms        |
+| `canEditRoomStatus`            | Change room status       |
+| `canAllocateRooms`             | Assign beds              |
+| `canViewPayments`              | See payment records      |
+| `canInitiatePayments`          | Initiate payments        |
+| `canMarkPaymentManual`         | Record cash payments     |
+| `canViewRevenue`               | Revenue dashboard        |
+| `canExportPaymentReport`       | Export reports           |
+| `canViewAttendance`            | View attendance          |
+| `canInitiateAttendance`        | Trigger daily attendance |
+| `canOverrideAttendance`        | Override status          |
+| `canApproveLeaves`             | Approve leave requests   |
+| `canRejectLeaves`              | Reject leave requests    |
+| `canViewLeaveAnalytics`        | Leave statistics         |
+| `canViewComplaints`            | See all complaints       |
+| `canAssignComplaints`          | Assign to staff          |
+| `canUpdateComplaintStatus`     | Resolve/close            |
+| `canDeleteComplaints`          | Delete complaints        |
+| `canSendNotifications`         | Send announcements       |
+| `canViewNotificationAnalytics` | View read/poll stats     |
+| `canViewPollResults`           | See poll results         |
+| `canManageFoodSchedule`        | Create meal plans        |
+| `canViewFoodFeedback`          | See meal ratings         |
 
 ---
 
@@ -661,6 +687,7 @@ POST {{BASE_URL}}/hostels/{{HOSTEL_ID}}/buildings
 ```
 
 **Body (JSON):**
+
 ```json
 {
   "buildingName": "Block A",
@@ -694,6 +721,7 @@ POST {{BASE_URL}}/hostels/{{HOSTEL_ID}}/rooms
 > Requires: Owner or `canManageRooms`
 
 **Body (JSON):**
+
 ```json
 {
   "buildingId": "64a1b2c3d4e5f6a7b8c9d0e1",
@@ -729,6 +757,7 @@ PUT {{BASE_URL}}/hostels/{{HOSTEL_ID}}/rooms/{{ROOM_ID}}
 > Requires: Owner or `canManageRooms`
 
 **Body (JSON) — all optional:**
+
 ```json
 {
   "monthlyFee": 9000,
@@ -759,6 +788,7 @@ POST {{BASE_URL}}/hostels/{{HOSTEL_ID}}/residents
 > Requires: Owner or `canAddResidents`
 
 **Body (JSON):**
+
 ```json
 {
   "fullName": "Anjali Sharma",
@@ -822,6 +852,7 @@ PUT {{BASE_URL}}/hostels/{{HOSTEL_ID}}/residents/{{RESIDENT_ID}}
 > Requires: `canEditResidents` or Owner
 
 **Body (JSON) — all optional:**
+
 ```json
 {
   "fullName": "Anjali R. Sharma",
@@ -846,6 +877,7 @@ PUT {{BASE_URL}}/hostels/{{HOSTEL_ID}}/residents/{{RESIDENT_ID}}/kyc
 > Requires: `canApproveKYC` or Owner
 
 **Body — Approve:**
+
 ```json
 {
   "action": "approve"
@@ -853,6 +885,7 @@ PUT {{BASE_URL}}/hostels/{{HOSTEL_ID}}/residents/{{RESIDENT_ID}}/kyc
 ```
 
 **Body — Reject:**
+
 ```json
 {
   "action": "reject",
@@ -891,6 +924,7 @@ POST {{BASE_URL}}/hostels/{{HOSTEL_ID}}/payments/manual
 > Requires: `canMarkPaymentManual` or Owner
 
 **Body (JSON):**
+
 ```json
 {
   "residentId": "64a1b2c3d4e5f6a7b8c9d0e4",
@@ -912,6 +946,7 @@ POST {{BASE_URL}}/hostels/{{HOSTEL_ID}}/attendance/config
 ```
 
 **Body (JSON):**
+
 ```json
 {
   "location": {
@@ -972,6 +1007,7 @@ PUT {{BASE_URL}}/hostels/{{HOSTEL_ID}}/leaves/{{LEAVE_ID}}/approve
 > Requires: `canApproveLeaves` or Owner
 
 **Body (JSON):**
+
 ```json
 {
   "remarks": "Approved. Get well soon."
@@ -989,6 +1025,7 @@ PUT {{BASE_URL}}/hostels/{{HOSTEL_ID}}/leaves/{{LEAVE_ID}}/reject
 > Requires: `canRejectLeaves` or Owner
 
 **Body (JSON):**
+
 ```json
 {
   "rejectionReason": "Insufficient leave balance for this period"
@@ -1006,6 +1043,7 @@ POST {{BASE_URL}}/hostels/{{HOSTEL_ID}}/notifications
 > Requires: `canSendNotifications` or Owner
 
 **Body (JSON) — Simple Announcement:**
+
 ```json
 {
   "title": "Water Supply Disruption",
@@ -1016,6 +1054,7 @@ POST {{BASE_URL}}/hostels/{{HOSTEL_ID}}/notifications
 ```
 
 **Body (JSON) — With Poll:**
+
 ```json
 {
   "title": "Food Feedback Survey",
@@ -1033,6 +1072,7 @@ POST {{BASE_URL}}/hostels/{{HOSTEL_ID}}/notifications
 ```
 
 **Body (JSON) — To Specific Residents:**
+
 ```json
 {
   "title": "Rent Due Reminder",
@@ -1080,6 +1120,7 @@ PUT {{BASE_URL}}/hostels/{{HOSTEL_ID}}/complaints/{{COMPLAINT_ID}}/status
 > Requires: `canUpdateComplaintStatus` or Owner
 
 **Body (JSON):**
+
 ```json
 {
   "status": "InProgress",
@@ -1100,6 +1141,7 @@ POST {{BASE_URL}}/hostels/{{HOSTEL_ID}}/complaints/{{COMPLAINT_ID}}/message
 > Requires: `canViewComplaints` or Owner
 
 **Body (JSON):**
+
 ```json
 {
   "message": "We have assigned Rakesh (plumber) to fix the issue by tomorrow."
@@ -1117,6 +1159,7 @@ POST {{BASE_URL}}/hostels/{{HOSTEL_ID}}/food-schedule
 > Requires: `canManageFoodSchedule` or Owner
 
 **Body (JSON):**
+
 ```json
 {
   "weekNumber": 28,
@@ -1195,6 +1238,7 @@ Content-Type: multipart/form-data
 ```
 
 **In Postman:**
+
 1. Set the method to `POST`
 2. Go to **Body** tab → select **form-data**
 3. Add a key `documents` → change type from `Text` to `File`
@@ -1213,6 +1257,7 @@ POST {{BASE_URL}}/residents/payments/initialize
 No body required. Uses the resident's `feeAmount` from their profile.
 
 **Sample Response:**
+
 ```json
 {
   "success": true,
@@ -1236,6 +1281,7 @@ POST {{BASE_URL}}/residents/payments/verify
 ```
 
 **Body (JSON):**
+
 ```json
 {
   "razorpay_order_id": "order_OADnxxxxxx",
@@ -1273,6 +1319,7 @@ POST {{BASE_URL}}/residents/attendance/submit
 ```
 
 **Body (JSON):**
+
 ```json
 {
   "status": "Present",
@@ -1282,14 +1329,15 @@ POST {{BASE_URL}}/residents/attendance/submit
 }
 ```
 
-| Field | Type | Required | Rules |
-|-------|------|----------|-------|
-| `status` | string | ✅ | `"Present"` or `"Absent"` |
-| `latitude` | number | ✅ | -90 to 90 |
-| `longitude` | number | ✅ | -180 to 180 |
-| `accuracy` | number | ✅ | GPS accuracy in metres |
+| Field       | Type   | Required | Rules                     |
+| ----------- | ------ | -------- | ------------------------- |
+| `status`    | string | ✅       | `"Present"` or `"Absent"` |
+| `latitude`  | number | ✅       | -90 to 90                 |
+| `longitude` | number | ✅       | -180 to 180               |
+| `accuracy`  | number | ✅       | GPS accuracy in metres    |
 
 **Sample Response:**
+
 ```json
 {
   "success": true,
@@ -1320,6 +1368,7 @@ POST {{BASE_URL}}/residents/leaves
 ```
 
 **Body (JSON):**
+
 ```json
 {
   "leaveType": "Sick",
@@ -1368,6 +1417,7 @@ POST {{BASE_URL}}/residents/notifications/{{NOTIFICATION_ID}}/poll-response
 ```
 
 **Body (JSON):**
+
 ```json
 {
   "selectedOption": "Good"
@@ -1385,14 +1435,14 @@ Content-Type: multipart/form-data
 
 **In Postman — form-data fields:**
 
-| Key | Type | Value |
-|-----|------|-------|
-| `title` | Text | `Bathroom tap is leaking` |
+| Key           | Type | Value                                                                            |
+| ------------- | ---- | -------------------------------------------------------------------------------- |
+| `title`       | Text | `Bathroom tap is leaking`                                                        |
 | `description` | Text | `The tap in the attached bathroom has been leaking for 3 days and wasting water` |
-| `category` | Text | `Maintenance` |
-| `priority` | Text | `High` |
-| `location` | Text | `Room 204, Block A` |
-| `attachments` | File | *(upload photo)* |
+| `category`    | Text | `Maintenance`                                                                    |
+| `priority`    | Text | `High`                                                                           |
+| `location`    | Text | `Room 204, Block A`                                                              |
+| `attachments` | File | _(upload photo)_                                                                 |
 
 > `category` — `"Maintenance"` | `"Cleanliness"` | `"Staff"` | `"Food"` | `"Safety"` | `"Other"`  
 > `priority` — `"Low"` | `"Medium"` | `"High"` | `"Critical"`
@@ -1414,6 +1464,7 @@ POST {{BASE_URL}}/residents/complaints/{{COMPLAINT_ID}}/message
 ```
 
 **Body (JSON):**
+
 ```json
 {
   "message": "The tap is still leaking. Please send someone urgently."
@@ -1445,6 +1496,7 @@ POST {{BASE_URL}}/residents/food-schedule/feedback
 ```
 
 **Body (JSON):**
+
 ```json
 {
   "mealType": "Lunch",
@@ -1460,28 +1512,29 @@ POST {{BASE_URL}}/residents/food-schedule/feedback
 
 ## 8. Error Codes Reference
 
-| HTTP Status | Code | Meaning | What to do |
-|-------------|------|---------|------------|
-| 400 | `VALIDATION_ERROR` | Request body failed Joi validation | Check `details` array for specific field errors |
-| 401 | `MISSING_TOKEN` | No `Authorization` header | Add `Bearer <token>` header |
-| 401 | `TOKEN_EXPIRED` | JWT expired | Call `POST /auth/refresh-token` |
-| 401 | `INVALID_TOKEN` | Malformed JWT | Re-login |
-| 403 | `FORBIDDEN` | You don't have the required role/permission | Use an account with the right permission |
-| 404 | `NOT_FOUND` | Resource or route doesn't exist | Check the URL and IDs |
-| 409 | `CONFLICT` | Duplicate (e.g. email already exists) | Use a different value |
-| 429 | `RATE_LIMITED` | Too many requests | Wait 15 minutes |
-| 500 | `INTERNAL_ERROR` | Server error | Check server logs |
+| HTTP Status | Code               | Meaning                                     | What to do                                      |
+| ----------- | ------------------ | ------------------------------------------- | ----------------------------------------------- |
+| 400         | `VALIDATION_ERROR` | Request body failed Joi validation          | Check `details` array for specific field errors |
+| 401         | `MISSING_TOKEN`    | No `Authorization` header                   | Add `Bearer <token>` header                     |
+| 401         | `TOKEN_EXPIRED`    | JWT expired                                 | Call `POST /auth/refresh-token`                 |
+| 401         | `INVALID_TOKEN`    | Malformed JWT                               | Re-login                                        |
+| 403         | `FORBIDDEN`        | You don't have the required role/permission | Use an account with the right permission        |
+| 404         | `NOT_FOUND`        | Resource or route doesn't exist             | Check the URL and IDs                           |
+| 409         | `CONFLICT`         | Duplicate (e.g. email already exists)       | Use a different value                           |
+| 429         | `RATE_LIMITED`     | Too many requests                           | Wait 15 minutes                                 |
+| 500         | `INTERNAL_ERROR`   | Server error                                | Check server logs                               |
 
 ---
 
 ## 9. Rate Limits
 
-| Route Group | Limit | Window |
-|------------|-------|--------|
-| `/v1/auth/*` | 20 requests | Per 15 minutes per IP |
+| Route Group       | Limit        | Window                |
+| ----------------- | ------------ | --------------------- |
+| `/v1/auth/*`      | 20 requests  | Per 15 minutes per IP |
 | All other `/v1/*` | 200 requests | Per 15 minutes per IP |
 
 When rate limited, response is:
+
 ```json
 {
   "success": false,
@@ -1541,4 +1594,4 @@ Here's the recommended order to test the full user journey:
 
 ---
 
-*Generated from source code — last updated April 2026*
+_Generated from source code — last updated April 2026_

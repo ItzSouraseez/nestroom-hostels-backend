@@ -135,8 +135,6 @@ const employeeSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-employeeSchema.index({ employeeId: 1 });
-employeeSchema.index({ employeeCode: 1 });
 employeeSchema.index({ userId: 1 });
 employeeSchema.index({ hostelId: 1 });
 employeeSchema.index({ position: 1 });

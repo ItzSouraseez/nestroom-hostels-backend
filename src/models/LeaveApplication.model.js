@@ -70,8 +70,6 @@ const leaveApplicationSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-leaveApplicationSchema.index({ leaveId: 1 });
-leaveApplicationSchema.index({ residentId: 1 });
 leaveApplicationSchema.index({ hostelId: 1 });
 leaveApplicationSchema.index({ residentId: 1, fromDate: -1 });
 leaveApplicationSchema.index({ status: 1 });

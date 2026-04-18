@@ -19,7 +19,7 @@ const mealSchema = new mongoose.Schema(
       required: true,
     },
     time: { type: String, default: null }, // "08:00-09:00"
-    menu: { type: String, default: null },
+    menu: [{ type: String }],
     ingredients: [{ type: String }],
     calories: { type: Number, default: null },
     dietaryTags: [{ type: String }], // ["Vegetarian", "GlutenFree"]
@@ -89,7 +89,6 @@ const foodScheduleSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-foodScheduleSchema.index({ foodScheduleId: 1 });
 foodScheduleSchema.index({ hostelId: 1 });
 foodScheduleSchema.index({ weekStartDate: -1 });
 foodScheduleSchema.index({ hostelId: 1, weekStartDate: -1 });

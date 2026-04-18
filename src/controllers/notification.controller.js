@@ -180,6 +180,32 @@ const getNotificationAnalytics = asyncHandler(async (req, res) => {
   });
 });
 
+// ─── 10.6 Get Hostel Notifications (Admin) ───────────────────────────────────
+const getHostelNotifications = asyncHandler(async (req, res) => {
+  const { page = 1, limit = 20 } = req.query;
+  const skip = (parseInt(page) - 1) * parseInt(limit);
+
+  const [notifications, total] = await Promise.all([
+    Notification.find({ hostelId: req.params.hostelId })
+      .sort({ sentAt: -1 })
+      .skip(skip)
+      .limit(parseInt(limit))
+      .select("title message type recipients totalViewCount viewRate poll sentAt deliveryStatus")
+      .lean(),
+    Notification.countDocuments({ hostelId: req.params.hostelId }),
+  ]);
+
+  return sendSuccess(res, {
+    notifications,
+    pagination: { 
+      page: parseInt(page), 
+      limit: parseInt(limit), 
+      total, 
+      pages: Math.ceil(total / parseInt(limit)) 
+    },
+  });
+});
+
 module.exports = {
-  sendNotification, getMyNotifications, markAsRead, submitPollResponse, getNotificationAnalytics,
+  sendNotification, getMyNotifications, markAsRead, submitPollResponse, getNotificationAnalytics, getHostelNotifications
 };

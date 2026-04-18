@@ -8,85 +8,49 @@ const { asyncHandler, createError } = require("../middlewares/errorHandler");
 const { sendSuccess } = require("../utils/responseHelper");
 const { generateAttendanceId } = require("../utils/idGenerator");
 const { checkGeofence } = require("../services/geofence");
-
-// Hostel-level attendance config stored on the Hostel document (simulated here via a simple in-memory map for MVP)
-// In production, add an AttendanceConfig sub-document or separate collection.
-const attendanceConfigs = new Map(); // hostelId → config
+const { triggerAttendanceForHostel } = require("../services/attendanceTrigger");
 
 // ─── 8.1 Configure Attendance (Owner/Employee) ────────────────────────────────
 const setAttendanceConfig = asyncHandler(async (req, res) => {
-  const { location, geofenceRadius, attendanceTime, attendanceFrequency, surpriseCheckEnabled } = req.body;
+  const { location, geofenceRadius, startTime, windowMinutes, enabled, daysOfWeek } = req.body;
 
-  attendanceConfigs.set(String(req.params.hostelId), {
-    location,
-    geofenceRadius,
-    attendanceTime,
-    attendanceFrequency,
-    surpriseCheckEnabled,
-    updatedAt: new Date(),
-    updatedBy: req.user._id,
-  });
+  const hostel = await Hostel.findById(req.params.hostelId);
+  if (!hostel) throw createError("Hostel not found", 404);
 
-  // Also persist geofence radius on Hostel document
-  await Hostel.findByIdAndUpdate(req.params.hostelId, {
-    $set: {
-      "location.coordinates": [location.longitude, location.latitude],
-      geofenceRadius,
-    },
-  });
+  // Update hostel location and geofence
+  if (location) {
+    hostel.location.coordinates = [location.longitude, location.latitude];
+  }
+  if (geofenceRadius) {
+    hostel.geofenceRadius = geofenceRadius;
+  }
 
-  return sendSuccess(res, { message: "Attendance configuration saved" });
+  // Update attendance config
+  hostel.attendanceConfig = {
+    ...hostel.attendanceConfig,
+    enabled: enabled ?? hostel.attendanceConfig.enabled,
+    startTime: startTime ?? hostel.attendanceConfig.startTime,
+    windowMinutes: windowMinutes ?? hostel.attendanceConfig.windowMinutes,
+    daysOfWeek: daysOfWeek ?? hostel.attendanceConfig.daysOfWeek,
+  };
+
+  await hostel.save();
+
+  return sendSuccess(res, { message: "Attendance configuration saved", config: hostel.attendanceConfig });
 });
 
 // ─── 8.2 Request Attendance from All Residents ────────────────────────────────
 const requestAttendance = asyncHandler(async (req, res) => {
   const hostelId = req.params.hostelId;
-  const config = attendanceConfigs.get(String(hostelId));
-  if (!config) throw createError("Attendance not configured for this hostel", 400, "ATTENDANCE_NOT_CONFIGURED");
+  const isSurprise = req.query.isSurprise === "true";
 
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
+  const result = await triggerAttendanceForHostel(hostelId, isSurprise);
 
-  // Check not already requested today
-  const existing = await AttendanceRecord.findOne({
-    hostelId,
-    attendanceDate: { $gte: today },
-  });
-  if (existing) throw createError("Attendance already requested for today", 409, "ALREADY_REQUESTED");
+  if (!result.success) {
+    throw createError(result.message, 400, "ATTENDANCE_TRIGGER_FAILED");
+  }
 
-  // Get all active residents
-  const residents = await Resident.find({ hostelId, residentStatus: "Active" }).lean();
-  if (!residents.length) throw createError("No active residents found", 400, "NO_RESIDENTS");
-
-  // Check approved leaves for today
-  const onLeave = await LeaveApplication.find({
-    hostelId,
-    status: "Approved",
-    fromDate: { $lte: new Date() },
-    toDate: { $gte: new Date() },
-  }).select("residentId").lean();
-
-  const onLeaveIds = new Set(onLeave.map((l) => String(l.residentId)));
-
-  const records = residents.map((resident) => ({
-    attendanceId: generateAttendanceId(),
-    residentId: resident._id,
-    hostelId,
-    buildingId: resident.buildingId,
-    attendanceDate: new Date(),
-    status: onLeaveIds.has(String(resident._id)) ? "OnLeave" : "NotResponded",
-    notificationSentAt: new Date(),
-    notificationSentVia: ["InApp"],
-    isOnApprovedLeave: onLeaveIds.has(String(resident._id)),
-  }));
-
-  await AttendanceRecord.insertMany(records);
-
-  return sendSuccess(res, {
-    message: `Attendance requested for ${residents.length} residents`,
-    totalRequested: records.length,
-    onLeave: onLeave.length,
-  });
+  return sendSuccess(res, result);
 });
 
 // ─── 8.3 Submit Attendance (Resident) ─────────────────────────────────────────
@@ -96,14 +60,11 @@ const submitAttendance = asyncHandler(async (req, res) => {
   const resident = await Resident.findOne({ userId: req.user._id }).lean();
   if (!resident) throw createError("Resident not found", 404, "RESIDENT_NOT_FOUND");
 
-  // Find today's attendance record for this resident
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
+  // Find most recent pending attendance request
   const record = await AttendanceRecord.findOne({
     residentId: resident._id,
-    attendanceDate: { $gte: today },
     status: "NotResponded",
-  });
+  }).sort({ createdAt: -1 });
 
   if (!record) throw createError("No pending attendance request found", 404, "NO_ATTENDANCE_REQUEST");
 
@@ -164,7 +125,7 @@ const getAttendanceHistory = asyncHandler(async (req, res) => {
 
   const [records, total] = await Promise.all([
     AttendanceRecord.find(filter)
-      .populate("residentId", "residentId fullName roomId")
+      .populate("residentId", "residentId fullName roomId profilePhoto")
       .sort({ attendanceDate: -1 })
       .skip(skip)
       .limit(parseInt(limit))
@@ -207,7 +168,20 @@ const getMyAttendance = asyncHandler(async (req, res) => {
   });
 });
 
+// ─── 8.6 Get Active Attendance Requests (Resident) ───────────────────────────
+const getActiveAttendanceRequest = asyncHandler(async (req, res) => {
+  const resident = await Resident.findOne({ userId: req.user._id }).lean();
+  if (!resident) throw createError("Resident not found", 404);
+
+  const activeRequest = await AttendanceRecord.findOne({
+    residentId: resident._id,
+    status: "NotResponded"
+  }).sort({ createdAt: -1 }).lean();
+
+  return sendSuccess(res, { activeRequest });
+});
+
 module.exports = {
   setAttendanceConfig, requestAttendance, submitAttendance,
-  getAttendanceHistory, getMyAttendance,
+  getAttendanceHistory, getMyAttendance, getActiveAttendanceRequest
 };
