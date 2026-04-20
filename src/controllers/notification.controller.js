@@ -190,7 +190,7 @@ const getHostelNotifications = asyncHandler(async (req, res) => {
       .sort({ sentAt: -1 })
       .skip(skip)
       .limit(parseInt(limit))
-      .select("title message type recipients totalViewCount viewRate poll sentAt deliveryStatus")
+      .select("title message type recipients totalViewCount viewRate poll sentAt deliveryStatus viewedBy")
       .lean(),
     Notification.countDocuments({ hostelId: req.params.hostelId }),
   ]);
