@@ -114,7 +114,7 @@ const addResident = asyncHandler(async (req, res) => {
   try {
     await sendCredentialsEmail(email, {
       fullName, email, password: tempPassword,
-      hostelCode: hostel?.hostelCode, role: "resident",
+      code: resident.residentId, role: "resident",
     });
   } catch (e) {
     console.error("Resident credential email failed:", e.message);
