@@ -10,6 +10,8 @@ const { sendSuccess } = require("../utils/responseHelper");
 const { generatePaymentId } = require("../utils/idGenerator");
 const { sendPaymentReceiptEmail } = require("../services/email");
 
+const { generateInvoicePDF } = require("../utils/invoiceGenerator");
+
 // ─── 7.1 Initialize Razorpay Payment ─────────────────────────────────────────
 const initializePayment = asyncHandler(async (req, res) => {
   const resident = await Resident.findOne({ userId: req.user._id }).lean();
@@ -84,7 +86,9 @@ const verifyPayment = asyncHandler(async (req, res) => {
 
   // Advance resident's next due date
   const resident = await Resident.findById(payment.residentId);
-  if (resident) {
+  const hostel = await Hostel.findById(payment.hostelId);
+
+  if (resident && hostel) {
     const next = new Date(resident.nextDueDate || new Date());
     if (resident.feeFrequency === "Monthly") next.setMonth(next.getMonth() + 1);
     else if (resident.feeFrequency === "Quarterly") next.setMonth(next.getMonth() + 3);
@@ -93,21 +97,28 @@ const verifyPayment = asyncHandler(async (req, res) => {
     await resident.save();
 
     // Update hostel total revenue
-    await Hostel.findByIdAndUpdate(payment.hostelId, {
-      $inc: { totalRevenue: payment.amount },
-    });
+    hostel.totalRevenue += payment.amount;
+    await hostel.save();
 
-    // Send receipt email
+    // Generate Invoice PDF
     try {
+      const pdfBuffer = await generateInvoicePDF(payment, resident, hostel);
+      
+      // Send receipt email with attachment
       await sendPaymentReceiptEmail(resident.email, {
         residentName: resident.fullName,
         amount: payment.amount,
         period: resident.feeFrequency,
         nextDueDate: next.toDateString(),
         receiptUrl: null,
-      });
+      }, [
+        {
+          filename: `Invoice_${payment.paymentId}.pdf`,
+          content: pdfBuffer,
+        }
+      ]);
     } catch (e) {
-      console.error("Receipt email failed:", e.message);
+      console.error("Invoice/Email failed:", e.message);
     }
   }
 
@@ -124,6 +135,8 @@ const recordManualPayment = asyncHandler(async (req, res) => {
   const { residentId, amount, mode, referenceNumber, remarks } = req.body;
 
   const resident = await Resident.findOne({ _id: residentId, hostelId: req.params.hostelId });
+  const hostel = await Hostel.findById(req.params.hostelId);
+  
   if (!resident) throw createError("Resident not found", 404, "RESIDENT_NOT_FOUND");
 
   const paymentId = generatePaymentId();
@@ -153,12 +166,53 @@ const recordManualPayment = asyncHandler(async (req, res) => {
   resident.nextDueDate = next;
   await resident.save();
 
-  await Hostel.findByIdAndUpdate(req.params.hostelId, { $inc: { totalRevenue: amount } });
+  if (hostel) {
+    hostel.totalRevenue += amount;
+    await hostel.save();
+    
+    // Generate and Email Invoice
+    try {
+      const pdfBuffer = await generateInvoicePDF(payment, resident, hostel);
+      await sendPaymentReceiptEmail(resident.email, {
+        residentName: resident.fullName,
+        amount: payment.amount,
+        period: resident.feeFrequency,
+        nextDueDate: next.toDateString(),
+        receiptUrl: null,
+      }, [
+        {
+          filename: `Invoice_${payment.paymentId}.pdf`,
+          content: pdfBuffer,
+        }
+      ]);
+    } catch (e) {
+      console.error("Manual invoice email failed:", e.message);
+    }
+  }
 
   return sendSuccess(res, { paymentId: payment.paymentId, message: "Manual payment recorded" }, 201);
 });
 
-// ─── 7.4 Payment History ──────────────────────────────────────────────────────
+// ─── 7.4 Download Invoice ─────────────────────────────────────────────────────
+const downloadInvoice = asyncHandler(async (req, res) => {
+  const { paymentId } = req.params;
+  const payment = await Payment.findOne({ paymentId }).populate("residentId hostelId");
+  
+  if (!payment) throw createError("Payment not found", 404);
+  
+  // Security check for residents
+  if (req.user.userType === 'resident' && String(payment.userId) !== String(req.user._id)) {
+    throw createError("Unauthorized access", 403);
+  }
+
+  const pdfBuffer = await generateInvoicePDF(payment, payment.residentId, payment.hostelId);
+  
+  res.setHeader('Content-Type', 'application/pdf');
+  res.setHeader('Content-Disposition', `attachment; filename=Invoice_${paymentId}.pdf`);
+  res.send(pdfBuffer);
+});
+
+// ─── 7.5 Payment History ──────────────────────────────────────────────────────
 const getPaymentHistory = asyncHandler(async (req, res) => {
   const { page = 1, limit = 20, status } = req.query;
   const skip = (parseInt(page) - 1) * parseInt(limit);
@@ -191,7 +245,7 @@ const getPaymentHistory = asyncHandler(async (req, res) => {
   });
 });
 
-// ─── 7.5 Upcoming Payment ─────────────────────────────────────────────────────
+// ─── 7.6 Upcoming Payment ─────────────────────────────────────────────────────
 const getUpcomingPayment = asyncHandler(async (req, res) => {
   const resident = await Resident.findOne({ userId: req.user._id }).lean();
   if (!resident) throw createError("Resident not found", 404);
@@ -205,9 +259,10 @@ const getUpcomingPayment = asyncHandler(async (req, res) => {
   });
 });
 
-// ─── 7.6 Revenue Dashboard ────────────────────────────────────────────────────
+// ─── 7.7 Revenue Dashboard ────────────────────────────────────────────────────
 const getRevenueDashboard = asyncHandler(async (req, res) => {
   const hostelId = req.params.hostelId;
+  const { timeframe = 'monthly' } = req.query;
   const now = new Date();
   const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
   const startOfYear = new Date(now.getFullYear(), 0, 1);
@@ -261,23 +316,71 @@ const getRevenueDashboard = asyncHandler(async (req, res) => {
 
   const nonSubmittedCount = residentsCount - submittedCount;
 
-  // Monthly trends
+  // Timeframe based trends
+  let groupStage = {};
+  let sortStage = {};
+  let matchDate = new Date();
+
+  switch (timeframe) {
+    case 'daily':
+      matchDate.setDate(now.getDate() - 30);
+      groupStage = { 
+        _id: { day: { $dayOfMonth: "$paidDate" }, month: { $month: "$paidDate" }, year: { $year: "$paidDate" } },
+        earnings: { $sum: "$amount" }
+      };
+      sortStage = { "_id.year": 1, "_id.month": 1, "_id.day": 1 };
+      break;
+    case 'weekly':
+      matchDate.setDate(now.getDate() - 84); // 12 weeks
+      groupStage = { 
+        _id: { week: { $week: "$paidDate" }, year: { $year: "$paidDate" } },
+        earnings: { $sum: "$amount" }
+      };
+      sortStage = { "_id.year": 1, "_id.week": 1 };
+      break;
+    case 'yearly':
+      matchDate.setFullYear(now.getFullYear() - 5);
+      groupStage = { 
+        _id: { year: { $year: "$paidDate" } },
+        earnings: { $sum: "$amount" }
+      };
+      sortStage = { "_id.year": 1 };
+      break;
+    case 'monthly':
+    default:
+      matchDate.setMonth(now.getMonth() - 11); // 12 months
+      groupStage = { 
+        _id: { month: { $month: "$paidDate" }, year: { $year: "$paidDate" } },
+        earnings: { $sum: "$amount" }
+      };
+      sortStage = { "_id.year": 1, "_id.month": 1 };
+      break;
+  }
+
   const trendsResponse = await Payment.aggregate([
     { 
       $match: { 
         hostelId: new mongoose.Types.ObjectId(hostelId), 
         paymentStatus: "Success", 
-        paidDate: { $gte: new Date(now.getFullYear(), now.getMonth() - 5, 1) } 
+        paidDate: { $gte: matchDate } 
       } 
     },
-    {
-      $group: {
-        _id: { month: { $month: "$paidDate" }, year: { $year: "$paidDate" } },
-        earnings: { $sum: "$amount" }
-      }
-    },
-    { $sort: { "_id.year": 1, "_id.month": 1 } }
+    { $group: groupStage },
+    { $sort: sortStage }
   ]);
+
+  const trends = trendsResponse.map(t => {
+    let label = '';
+    if (timeframe === 'daily') label = `${t._id.day} ${new Date(0, t._id.month - 1).toLocaleString('default', { month: 'short' })}`;
+    else if (timeframe === 'weekly') label = `Week ${t._id.week}, ${t._id.year}`;
+    else if (timeframe === 'yearly') label = `${t._id.year}`;
+    else label = new Date(t._id.year, t._id.month - 1).toLocaleString('default', { month: 'short' });
+
+    return {
+      label,
+      earnings: t.earnings
+    };
+  });
 
   return sendSuccess(res, {
     allTimeRevenue: hostel?.totalRevenue || 0,
@@ -293,10 +396,7 @@ const getRevenueDashboard = asyncHandler(async (req, res) => {
       totalResidents: residentsCount,
       upcomingRenewals: upcomingRenewalsCount
     },
-    trends: trendsResponse.map(t => ({
-      month: new Date(t._id.year, t._id.month - 1).toLocaleString('default', { month: 'short' }),
-      earnings: t.earnings
-    }))
+    trends
   });
 });
 
@@ -305,4 +405,5 @@ const getRevenueDashboard = asyncHandler(async (req, res) => {
 module.exports = {
   initializePayment, verifyPayment, recordManualPayment,
   getPaymentHistory, getUpcomingPayment, getRevenueDashboard,
+  downloadInvoice
 };
